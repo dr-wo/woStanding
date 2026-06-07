@@ -2,6 +2,11 @@
 
 Formula 1 standings analysis and plotting tools built on FastF1.
 
+For future AI-assisted changes, start with
+[AI_AGENT_CONTEXT.md](docs/AI_AGENT_CONTEXT.md). It summarizes the repository
+purpose, package structure, data contracts, plotting conventions, and
+verification expectations.
+
 The package keeps championship-table calculations separate from strategy
 analysis. It follows the same lightweight layering used by `woStrategy`:
 
