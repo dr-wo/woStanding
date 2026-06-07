@@ -27,3 +27,12 @@ python -m wostanding.script.points_progression \
 This writes driver and team progression plots plus CSV exports under `temp/`.
 Sprint points are included by default; pass `--exclude-sprints` to use race
 points only.
+
+## Examples
+
+Example local outputs from `temp/`:
+
+<p>
+  <img src="../temp/points_progression_2026_drivers.png" alt="2026 accumulated driver points progression" width="48%">
+  <img src="../temp/points_progression_2026_teams.png" alt="2026 accumulated team points progression" width="48%">
+</p>
