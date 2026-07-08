@@ -12,16 +12,20 @@ from wostanding.analysis.points_progression import (
     calculate_points_progression,
 )
 from wostanding.plots.points_progression import (
+    DEFAULT_PROJECTION_HISTORY_ROUNDS,
     plot_points_progression,
     save_points_progression_figures,
 )
+from wostanding.utils import parse_inclusive_race_range
 
 
 SCRIPT_CONFIG = {
     "year": 2026,
-    "race_start": 1,
-    "race_end": 5,
+    "race_range": [1, 9],
     "include_sprints": True,
+    "include_projection": True,
+    "projection_top": 4,
+    "projection_history_rounds": DEFAULT_PROJECTION_HISTORY_ROUNDS,
     "output": None,
     "driver_csv_output": None,
     "team_csv_output": None,
@@ -33,15 +37,27 @@ SCRIPT_CONFIG = {
 def run_points_progression(
     *,
     year: int,
-    race_start: int = SCRIPT_CONFIG["race_start"],
-    race_end: int | None = SCRIPT_CONFIG["race_end"],
+    race_range: list[int] | tuple[int, int] | str = SCRIPT_CONFIG["race_range"],
     include_sprints: bool = SCRIPT_CONFIG["include_sprints"],
+    include_projection: bool = SCRIPT_CONFIG["include_projection"],
+    projection_top: int = SCRIPT_CONFIG["projection_top"],
+    projection_history_rounds: int = SCRIPT_CONFIG["projection_history_rounds"],
     output_path: str | Path | None = SCRIPT_CONFIG["output"],
     driver_csv_output_path: str | Path | None = SCRIPT_CONFIG["driver_csv_output"],
     team_csv_output_path: str | Path | None = SCRIPT_CONFIG["team_csv_output"],
     event_csv_output_path: str | Path | None = SCRIPT_CONFIG["event_csv_output"],
     show: bool = SCRIPT_CONFIG["show"],
 ) -> tuple[PointsProgressionResult, dict[str, tuple[plt.Figure, plt.Axes, pd.DataFrame]]]:
+    if projection_top < 0:
+        raise ValueError("projection_top must be non-negative.")
+    if projection_history_rounds <= 0:
+        raise ValueError("projection_history_rounds must be positive.")
+
+    race_start, race_end = parse_inclusive_race_range(
+        race_range,
+        argument_name="race range",
+    )
+
     event_points = load_season_event_points(
         year=year,
         race_start=race_start,
@@ -51,10 +67,15 @@ def run_points_progression(
     if event_points.empty:
         raise ValueError(f"No event points loaded for {year}.")
 
+    round_labels = load_season_round_labels(year)
     result = calculate_points_progression(event_points)
     figures = plot_points_progression(
         result,
         title=f"{year} Accumulated Points",
+        include_projection=include_projection,
+        projection_top=projection_top,
+        projection_history_rounds=projection_history_rounds,
+        round_labels=round_labels,
     )
 
     output_path = _resolve_output_path(output_path, year=year)
@@ -142,9 +163,15 @@ def main() -> None:
     args = _parse_args()
     run_points_progression(
         year=args.year,
-        race_start=args.race_start,
-        race_end=args.race_end,
+        race_range=_resolve_race_range_args(
+            race_range=args.race_range,
+            race_start=args.race_start,
+            race_end=args.race_end,
+        ),
         include_sprints=not args.exclude_sprints,
+        include_projection=args.include_projection,
+        projection_top=args.projection_top,
+        projection_history_rounds=args.projection_history_rounds,
         output_path=args.output,
         driver_csv_output_path=args.driver_csv_output,
         team_csv_output_path=args.team_csv_output,
@@ -158,12 +185,35 @@ def _parse_args() -> argparse.Namespace:
         description="Plot accumulated Formula 1 points by driver and by team."
     )
     parser.add_argument("--year", type=int, default=SCRIPT_CONFIG["year"])
-    parser.add_argument("--race-start", type=int, default=SCRIPT_CONFIG["race_start"])
-    parser.add_argument("--race-end", type=int, default=SCRIPT_CONFIG["race_end"])
+    parser.add_argument(
+        "--race-range",
+        default=SCRIPT_CONFIG["race_range"],
+        help="Inclusive race range as [<start>, <end>], e.g. '[1, 9]'.",
+    )
+    parser.add_argument("--race-start", type=int, default=None, help=argparse.SUPPRESS)
+    parser.add_argument("--race-end", type=int, default=None, help=argparse.SUPPRESS)
     parser.add_argument(
         "--exclude-sprints",
         action="store_true",
         help="Do not include sprint points in the accumulated totals.",
+    )
+    parser.add_argument(
+        "--include-projection",
+        action="store_true",
+        default=SCRIPT_CONFIG["include_projection"],
+        help="Project top-N driver and team totals through the full season.",
+    )
+    parser.add_argument(
+        "--projection-top",
+        type=_nonnegative_int,
+        default=SCRIPT_CONFIG["projection_top"],
+        help="Number of top driver/team standings to project.",
+    )
+    parser.add_argument(
+        "--projection-history-rounds",
+        type=_positive_int,
+        default=SCRIPT_CONFIG["projection_history_rounds"],
+        help="Number of past rounds used to fit the projection slope.",
     )
     parser.add_argument("--output", type=Path, default=SCRIPT_CONFIG["output"])
     parser.add_argument(
@@ -183,6 +233,43 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--show", action="store_true", default=SCRIPT_CONFIG["show"])
     return parser.parse_args()
+
+
+def _nonnegative_int(value: str) -> int:
+    parsed = int(value)
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("must be non-negative")
+    return parsed
+
+
+def _positive_int(value: str) -> int:
+    parsed = int(value)
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be positive")
+    return parsed
+
+
+def _resolve_race_range_args(
+    *,
+    race_range: list[int] | tuple[int, int] | str,
+    race_start: int | None,
+    race_end: int | None,
+) -> list[int] | tuple[int, int] | str:
+    if race_start is None and race_end is None:
+        return race_range
+    if race_start is None or race_end is None:
+        raise ValueError("Legacy --race-start and --race-end must be provided together.")
+    return [race_start, race_end]
+
+
+def load_season_round_labels(year: int) -> pd.DataFrame:
+    schedule = fastf1.get_event_schedule(year, include_testing=False)
+    return (
+        schedule.loc[:, ["RoundNumber", "EventName"]]
+        .drop_duplicates()
+        .sort_values("RoundNumber")
+        .reset_index(drop=True)
+    )
 
 
 def _load_session_results(year: int, round_number: int, session_name: str) -> pd.DataFrame | None:
