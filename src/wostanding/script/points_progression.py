@@ -21,12 +21,13 @@ from wostanding.utils import parse_inclusive_race_range
 
 SCRIPT_CONFIG = {
     "year": 2026,
-    "race_range": [1, 9],
+    "race_range": [1, 10],
     "include_sprints": True,
     "include_projection": True,
     "projection_top": 4,
     "projection_history_rounds": DEFAULT_PROJECTION_HISTORY_ROUNDS,
     "output": None,
+    "output_format": "svg",
     "driver_csv_output": None,
     "team_csv_output": None,
     "event_csv_output": None,
@@ -43,6 +44,7 @@ def run_points_progression(
     projection_top: int = SCRIPT_CONFIG["projection_top"],
     projection_history_rounds: int = SCRIPT_CONFIG["projection_history_rounds"],
     output_path: str | Path | None = SCRIPT_CONFIG["output"],
+    output_format: str = SCRIPT_CONFIG["output_format"],
     driver_csv_output_path: str | Path | None = SCRIPT_CONFIG["driver_csv_output"],
     team_csv_output_path: str | Path | None = SCRIPT_CONFIG["team_csv_output"],
     event_csv_output_path: str | Path | None = SCRIPT_CONFIG["event_csv_output"],
@@ -78,7 +80,7 @@ def run_points_progression(
         round_labels=round_labels,
     )
 
-    output_path = _resolve_output_path(output_path, year=year)
+    output_path = _resolve_output_path(output_path, year=year, output_format=output_format)
     saved_paths = save_points_progression_figures(figures, output_path)
     csv_paths = _save_points_csvs(
         result,
@@ -173,6 +175,7 @@ def main() -> None:
         projection_top=args.projection_top,
         projection_history_rounds=args.projection_history_rounds,
         output_path=args.output,
+        output_format=args.output_format,
         driver_csv_output_path=args.driver_csv_output,
         team_csv_output_path=args.team_csv_output,
         event_csv_output_path=args.event_csv_output,
@@ -216,6 +219,11 @@ def _parse_args() -> argparse.Namespace:
         help="Number of past rounds used to fit the projection slope.",
     )
     parser.add_argument("--output", type=Path, default=SCRIPT_CONFIG["output"])
+    parser.add_argument(
+        "--output-format",
+        default=SCRIPT_CONFIG["output_format"],
+        help="Default plot format when --output is omitted, e.g. svg, pdf, or png.",
+    )
     parser.add_argument(
         "--driver-csv-output",
         type=Path,
@@ -357,10 +365,22 @@ def _save_points_csvs(
     return csv_paths
 
 
-def _resolve_output_path(output_path: str | Path | None, *, year: int) -> Path:
+def _resolve_output_path(
+    output_path: str | Path | None,
+    *,
+    year: int,
+    output_format: str,
+) -> Path:
     if output_path is not None:
         return Path(output_path)
-    return Path("temp") / f"points_progression_{year}.png"
+    return Path("temp") / f"points_progression_{year}{_normalise_output_suffix(output_format)}"
+
+
+def _normalise_output_suffix(output_format: str) -> str:
+    suffix = str(output_format).strip()
+    if not suffix:
+        raise ValueError("output format must not be empty.")
+    return suffix if suffix.startswith(".") else f".{suffix}"
 
 
 def _resolve_csv_path(

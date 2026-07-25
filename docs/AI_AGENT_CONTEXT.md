@@ -39,8 +39,7 @@ Run the points progression workflow with:
 ```bash
 python -m wostanding.script.points_progression \
   --year 2026 \
-  --race-start 1 \
-  --race-end 5
+  --race-range '[1, 10]'
 ```
 
 By default this:
@@ -51,7 +50,9 @@ By default this:
 - Aggregates race and sprint points by `RoundNumber`, `EventName`, `Driver`,
   and `Team`.
 - Calculates cumulative driver and team points.
-- Saves driver and team PNGs plus event/driver/team CSV exports under `temp/`.
+- Saves driver and team plots plus event/driver/team CSV exports under `temp/`.
+  `SCRIPT_CONFIG["output_format"]` controls the default plot suffix when
+  `--output` is omitted, and currently defaults to SVG for vector output.
 
 Use `--exclude-sprints` for race-only points.
 
@@ -91,6 +92,10 @@ docs/assets/points_progression_2026_teams.png
 
 Do not point README images at `../temp/...`; GitHub will not reliably render
 paths outside the repository.
+
+Use vector outputs such as SVG or PDF when line geometry needs to stay exact
+under zooming. PNG remains available through `--output-format png` or an
+explicit `.png` `--output` path.
 
 ## Dependencies
 

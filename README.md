@@ -25,13 +25,14 @@ python -m pip install -e .
 
 python -m wostanding.script.points_progression \
   --year 2026 \
-  --race-start 1 \
-  --race-end 5
+  --race-range '[1, 10]'
 ```
 
 This writes driver and team progression plots plus CSV exports under `temp/`.
 Sprint points are included by default; pass `--exclude-sprints` to use race
-points only.
+points only. Plot output defaults to SVG for crisp vector rendering; pass
+`--output-format png` when using the default output path, or pass an explicit
+`--output temp/points_progression_2026.png`, to write PNGs instead.
 
 ## Examples
 
