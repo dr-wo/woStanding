@@ -18,6 +18,9 @@ analysis -> plots -> script
 - `wostanding.plots`: matplotlib figure rendering.
 - `wostanding.script`: CLI entry points and workflow orchestration.
 
+Team plotting colours are imported from the shared `wodata.colours` palette;
+they should not be duplicated or overridden locally.
+
 ## Usage
 
 ```bash
