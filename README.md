@@ -5,11 +5,13 @@ Formula 1 standings analysis and plotting tools built on FastF1.
 ## Results
 
 The package turns public event results into accumulated driver and constructor
-championship progression, with optional Sprint inclusion and CSV exports.
+championship progression, with optional Sprint inclusion and CSV exports. The
+published examples contain actual 2026 results through R13; dash-dot extensions
+are illustrative projections based on recent rounds.
 
 <p>
-  <img src="docs/assets/points_progression_2026_drivers.png" alt="2026 accumulated driver points progression" width="48%">
-  <img src="docs/assets/points_progression_2026_teams.png" alt="2026 accumulated team points progression" width="48%">
+  <img src="docs/assets/points_progression_2026_drivers.png" alt="2026 accumulated driver points progression through R13, with illustrative projections" width="48%">
+  <img src="docs/assets/points_progression_2026_teams.png" alt="2026 accumulated constructor points progression through R13, with illustrative projections" width="48%">
 </p>
 
 ## Design
@@ -35,10 +37,10 @@ python -m pip install -e .
 
 python -m wostanding.script.points_progression \
   --year 2026 \
-  --race-range '[1, 10]'
+  --race-range '[1, 13]'
 ```
 
-This writes driver and team progression plots plus CSV exports under `temp/`.
+This writes driver and constructor progression plots plus CSV exports under `temp/`.
 Sprint points are included by default; pass `--exclude-sprints` to use race
 points only. Plot output defaults to SVG for crisp vector rendering; pass
 `--output-format png` when using the default output path, or pass an explicit
